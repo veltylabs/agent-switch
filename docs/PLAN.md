@@ -1,4 +1,4 @@
-# agent-switch — Implementation Plan
+# agent-switch — Implementation Plan.
 
 > **Module:** `github.com/veltylabs/agent-switch`
 > **Package:** `agentswitch`
