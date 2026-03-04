@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/tinywasm/fmt"
+	"github.com/tinywasm/mcp"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/unixid"
 )
@@ -15,12 +16,56 @@ type Module struct {
 	uid *unixid.UnixID
 }
 
+func (m *Module) GetMCPToolsMetadata() []mcp.ToolMetadata {
+	return []mcp.ToolMetadata{
+		{
+			Name:        "get_agent_status",
+			Description: "Returns the current agent enabled/disabled status.",
+			Execute:     m.GetStatus,
+		},
+		{
+			Name:        "toggle_agent_status",
+			Description: "Enables or disables the agent. Append-only audit log.",
+			Parameters: []mcp.ParameterMetadata{
+				{
+					Name:        "is_enabled",
+					Description: "true to enable the agent, false to disable.",
+					Required:    true,
+					Type:        "boolean",
+				},
+				{
+					Name:        "changed_by",
+					Description: "ID or name of the user making the change.",
+					Required:    true,
+					Type:        "string",
+				},
+				{
+					Name:        "reason",
+					Description: "Optional reason for the change.",
+					Required:    false,
+					Type:        "string",
+				},
+			},
+			Execute: m.Toggle,
+		},
+	}
+}
+
 func New(db *orm.DB) (*Module, error) {
+	if err := db.CreateTable(&AgentSwitch{}); err != nil {
+		return nil, err
+	}
 	u, err := unixid.NewUnixID()
 	if err != nil {
 		return nil, err
 	}
 	return &Module{db: db, uid: u}, nil
+}
+
+// RegisterTools registers all agent-switch MCP tools on the given server.
+// Call once during application startup after New(db).
+func (m *Module) RegisterTools(srv *mcp.MCPServer) {
+	srv.RegisterProvider(m)
 }
 
 // GetStatus returns the current agent enabled/disabled state.

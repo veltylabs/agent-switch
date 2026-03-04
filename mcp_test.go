@@ -12,9 +12,28 @@ import (
 
 func setupTestModule(t *testing.T) *Module {
 	db, _ := sqlite.Open(":memory:")
-	db.CreateTable(&AgentSwitch{})
 	m, _ := New(db)
 	return m
+}
+
+func TestGetMCPToolsMetadata(t *testing.T) {
+	m := setupTestModule(t)
+	tools := m.GetMCPToolsMetadata()
+	if len(tools) != 2 {
+		t.Fatalf("expected 2 tools, got %d", len(tools))
+	}
+
+	if tools[0].Name != "get_agent_status" {
+		t.Errorf("expected tool 0 to be get_agent_status, got %s", tools[0].Name)
+	}
+
+	if tools[1].Name != "toggle_agent_status" {
+		t.Errorf("expected tool 1 to be toggle_agent_status, got %s", tools[1].Name)
+	}
+
+	if len(tools[1].Parameters) != 3 {
+		t.Errorf("expected 3 parameters for toggle_agent_status, got %d", len(tools[1].Parameters))
+	}
 }
 
 func TestGetAgentStatus_Enabled(t *testing.T) {
