@@ -16,8 +16,8 @@ type Module struct {
 	uid *unixid.UnixID
 }
 
-func (m *Module) GetMCPToolsMetadata() []mcp.ToolMetadata {
-	return []mcp.ToolMetadata{
+func (m *Module) GetMCPTools() []mcp.Tool {
+	return []mcp.Tool{
 		{
 			Name:        "get_agent_status",
 			Description: "Returns the current agent enabled/disabled status.",
@@ -26,7 +26,7 @@ func (m *Module) GetMCPToolsMetadata() []mcp.ToolMetadata {
 		{
 			Name:        "toggle_agent_status",
 			Description: "Enables or disables the agent. Append-only audit log.",
-			Parameters: []mcp.ParameterMetadata{
+			Parameters: []mcp.Parameter{
 				{
 					Name:        "is_enabled",
 					Description: "true to enable the agent, false to disable.",

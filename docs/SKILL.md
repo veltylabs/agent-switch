@@ -9,7 +9,7 @@ Latest row = current state. Never mutate or delete rows.
 |------|------|
 | `model.go` | `AgentSwitch` struct + `TableName()` |
 | `model_orm.go` | Auto-generated ORM helpers — DO NOT EDIT |
-| `mcp.go` | `Module`, `New(db)`, `GetMCPToolsMetadata()`, `RegisterTools()`, `GetStatus()`, `Toggle()` |
+| `mcp.go` | `Module`, `New(db)`, `GetMCPTools()`, `RegisterTools()`, `GetStatus()`, `Toggle()` |
 | `mcp_test.go` | All tests (in-package, `!wasm` build tag, `:memory:` SQLite) |
 
 ## Constraints

@@ -18,7 +18,7 @@ func setupTestModule(t *testing.T) *Module {
 
 func TestGetMCPToolsMetadata(t *testing.T) {
 	m := setupTestModule(t)
-	tools := m.GetMCPToolsMetadata()
+	tools := m.GetMCPTools()
 	if len(tools) != 2 {
 		t.Fatalf("expected 2 tools, got %d", len(tools))
 	}
