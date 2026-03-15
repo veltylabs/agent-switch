@@ -16,8 +16,8 @@ type Module struct {
 	uid *unixid.UnixID
 }
 
-func (m *Module) GetMCPTools() []mcp.Tool {
-	return []mcp.Tool{
+func (m *Module) GetMCPToolsMetadata() []mcp.ToolMetadata {
+	return []mcp.ToolMetadata{
 		{
 			Name:        "get_agent_status",
 			Description: "Returns the current agent enabled/disabled status.",
@@ -26,7 +26,7 @@ func (m *Module) GetMCPTools() []mcp.Tool {
 		{
 			Name:        "toggle_agent_status",
 			Description: "Enables or disables the agent. Append-only audit log.",
-			Parameters: []mcp.Parameter{
+			Parameters: []mcp.ParameterMetadata{
 				{
 					Name:        "is_enabled",
 					Description: "true to enable the agent, false to disable.",
@@ -72,7 +72,7 @@ func (m *Module) RegisterTools(srv *mcp.MCPServer) {
 // Signature matches ToolHandler: func(context.Context, map[string]any) (any, error)
 func (m *Module) GetStatus(ctx context.Context, args map[string]any) (any, error) {
 	rows, err := ReadAllAgentSwitch(
-		m.db.Query(&AgentSwitch{}).OrderBy(AgentSwitchMeta.ID).Desc().Limit(1),
+		m.db.Query(&AgentSwitch{}).OrderBy(AgentSwitch_.ID).Desc().Limit(1),
 	)
 	if err != nil {
 		return nil, err
