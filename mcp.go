@@ -3,8 +3,9 @@
 package agentswitch
 
 import (
-	"context"
+	"encoding/json"
 
+	"github.com/tinywasm/context"
 	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/mcp"
 	"github.com/tinywasm/orm"
@@ -14,41 +15,6 @@ import (
 type Module struct {
 	db  *orm.DB
 	uid *unixid.UnixID
-}
-
-func (m *Module) GetMCPToolsMetadata() []mcp.ToolMetadata {
-	return []mcp.ToolMetadata{
-		{
-			Name:        "get_agent_status",
-			Description: "Returns the current agent enabled/disabled status.",
-			Execute:     m.GetStatus,
-		},
-		{
-			Name:        "toggle_agent_status",
-			Description: "Enables or disables the agent. Append-only audit log.",
-			Parameters: []mcp.ParameterMetadata{
-				{
-					Name:        "is_enabled",
-					Description: "true to enable the agent, false to disable.",
-					Required:    true,
-					Type:        "boolean",
-				},
-				{
-					Name:        "changed_by",
-					Description: "ID or name of the user making the change.",
-					Required:    true,
-					Type:        "string",
-				},
-				{
-					Name:        "reason",
-					Description: "Optional reason for the change.",
-					Required:    false,
-					Type:        "string",
-				},
-			},
-			Execute: m.Toggle,
-		},
-	}
 }
 
 func New(db *orm.DB) (*Module, error) {
@@ -62,63 +28,79 @@ func New(db *orm.DB) (*Module, error) {
 	return &Module{db: db, uid: u}, nil
 }
 
-// RegisterTools registers all agent-switch MCP tools on the given server.
-// Call once during application startup after New(db).
-func (m *Module) RegisterTools(srv *mcp.MCPServer) {
-	srv.RegisterProvider(m)
+// Tools implements mcp.ToolProvider.
+func (m *Module) Tools() []mcp.Tool {
+	return []mcp.Tool{
+		{
+			Name:        "get_agent_status",
+			Description: "Returns the current agent enabled/disabled status.",
+			Resource:    "agent_switch",
+			Action:      'r',
+			Execute:     m.GetStatus,
+		},
+		{
+			Name:        "toggle_agent_status",
+			Description: "Enables or disables the agent. Append-only audit log.",
+			Resource:    "agent_switch",
+			Action:      'u',
+			Execute:     m.Toggle,
+		},
+	}
 }
 
 // GetStatus returns the current agent enabled/disabled state.
-// Signature matches ToolHandler: func(context.Context, map[string]any) (any, error)
-func (m *Module) GetStatus(ctx context.Context, args map[string]any) (any, error) {
+func (m *Module) GetStatus(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 	rows, err := ReadAllAgentSwitch(
 		m.db.Query(&AgentSwitch{}).OrderBy(AgentSwitch_.ID).Desc().Limit(1),
 	)
 	if err != nil {
-		return nil, err
+		return &mcp.Result{IsError: true, Content: fmt.Err("database", "unavailable").Error()}, nil
 	}
 	if len(rows) == 0 {
-		return map[string]any{"is_enabled": false, "changed_at": int64(0)}, nil
+		b, _ := json.Marshal(map[string]any{"is_enabled": false, "changed_at": int64(0)})
+		return mcp.Text(string(b)), nil
 	}
 	r := rows[0]
 
 	// Extract timestamp from unixid
 	ts, _, err := m.uid.Parse(r.ID)
 	if err != nil {
-		return nil, err
+		return &mcp.Result{IsError: true, Content: err.Error()}, nil
 	}
 
-	return map[string]any{
+	b, _ := json.Marshal(map[string]any{
 		"is_enabled": r.IsEnabled,
 		"changed_by": r.ChangedBy,
 		"changed_at": ts,
 		"reason":     r.Reason,
-	}, nil
+	})
+	return mcp.Text(string(b)), nil
 }
 
 // Toggle inserts a new audit row. Append-only — never updates existing rows.
-// Signature matches ToolHandler: func(context.Context, map[string]any) (any, error)
-// The caller is responsible for injecting "changed_by" into args (e.g. from JWT claims).
-func (m *Module) Toggle(ctx context.Context, args map[string]any) (any, error) {
-	isEnabled, ok := args["is_enabled"].(bool)
-	if !ok {
-		return nil, fmt.Err("params", "invalid") // EN: Params Invalid
+func (m *Module) Toggle(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
+	var args struct {
+		IsEnabled *bool  `json:"is_enabled"`
+		ChangedBy string `json:"changed_by"`
+		Reason    string `json:"reason"`
 	}
-	changedBy, _ := args["changed_by"].(string)
-	if changedBy == "" {
-		return nil, fmt.Err("params", "invalid") // EN: Params Invalid
+	if err := json.Unmarshal([]byte(req.Params.Arguments), &args); err != nil || args.IsEnabled == nil {
+		return &mcp.Result{IsError: true, Content: fmt.Err("params", "invalid").Error()}, nil
 	}
-	reason, _ := args["reason"].(string)
+	if args.ChangedBy == "" {
+		return &mcp.Result{IsError: true, Content: fmt.Err("params", "invalid").Error()}, nil
+	}
 
 	row := &AgentSwitch{
 		ID:        m.uid.GetNewID(),
-		IsEnabled: isEnabled,
-		ChangedBy: changedBy,
-		Reason:    reason,
+		IsEnabled: *args.IsEnabled,
+		ChangedBy: args.ChangedBy,
+		Reason:    args.Reason,
 	}
 	if err := m.db.Create(row); err != nil {
-		return nil, fmt.Err("database", "unavailable") // EN: Database Unavailable
+		return &mcp.Result{IsError: true, Content: fmt.Err("database", "unavailable").Error()}, nil
 	}
 
-	return map[string]any{"ok": true, "is_enabled": isEnabled}, nil
+	b, _ := json.Marshal(map[string]any{"ok": true, "is_enabled": *args.IsEnabled})
+	return mcp.Text(string(b)), nil
 }

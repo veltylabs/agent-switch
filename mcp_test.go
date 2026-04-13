@@ -3,10 +3,12 @@
 package agentswitch
 
 import (
-	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/tinywasm/context"
+	"github.com/tinywasm/mcp"
 	"github.com/tinywasm/sqlite"
 )
 
@@ -16,9 +18,9 @@ func setupTestModule(t *testing.T) *Module {
 	return m
 }
 
-func TestGetMCPToolsMetadata(t *testing.T) {
+func TestTools(t *testing.T) {
 	m := setupTestModule(t)
-	tools := m.GetMCPToolsMetadata()
+	tools := m.Tools()
 	if len(tools) != 2 {
 		t.Fatalf("expected 2 tools, got %d", len(tools))
 	}
@@ -31,8 +33,8 @@ func TestGetMCPToolsMetadata(t *testing.T) {
 		t.Errorf("expected tool 1 to be toggle_agent_status, got %s", tools[1].Name)
 	}
 
-	if len(tools[1].Parameters) != 3 {
-		t.Errorf("expected 3 parameters for toggle_agent_status, got %d", len(tools[1].Parameters))
+	if tools[1].Resource != "agent_switch" {
+		t.Errorf("expected resource agent_switch, got %s", tools[1].Resource)
 	}
 }
 
@@ -45,14 +47,24 @@ func TestGetAgentStatus_Enabled(t *testing.T) {
 		Reason:    "test",
 	})
 
-	res, err := m.GetStatus(context.Background(), nil)
+	var ctx context.Context
+	res, err := m.GetStatus(&ctx, mcp.Request{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	mRes, ok := res.(map[string]any)
-	if !ok {
-		t.Fatalf("expected map[string]any, got %T", res)
+	if res.IsError {
+		t.Fatalf("expected no error in result, got %s", res.Content)
+	}
+
+	text, err := mcp.GetText(res)
+	if err != nil {
+		t.Fatalf("failed to get text: %v", err)
+	}
+
+	var mRes map[string]any
+	if err := json.Unmarshal([]byte(text), &mRes); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
 	}
 
 	if mRes["is_enabled"] != true {
@@ -66,20 +78,30 @@ func TestGetAgentStatus_Enabled(t *testing.T) {
 func TestGetAgentStatus_NoHistory(t *testing.T) {
 	m := setupTestModule(t)
 
-	res, err := m.GetStatus(context.Background(), nil)
+	var ctx context.Context
+	res, err := m.GetStatus(&ctx, mcp.Request{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	mRes, ok := res.(map[string]any)
-	if !ok {
-		t.Fatalf("expected map[string]any, got %T", res)
+	if res.IsError {
+		t.Fatalf("expected no error in result, got %s", res.Content)
+	}
+
+	text, err := mcp.GetText(res)
+	if err != nil {
+		t.Fatalf("failed to get text: %v", err)
+	}
+
+	var mRes map[string]any
+	if err := json.Unmarshal([]byte(text), &mRes); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
 	}
 
 	if mRes["is_enabled"] != false {
 		t.Errorf("expected is_enabled to be false, got %v", mRes["is_enabled"])
 	}
-	if mRes["changed_at"] != int64(0) {
+	if mRes["changed_at"].(float64) != 0 {
 		t.Errorf("expected changed_at to be 0, got %v", mRes["changed_at"])
 	}
 }
@@ -105,14 +127,24 @@ func TestGetAgentStatus_ReturnsLatestOnly(t *testing.T) {
 		Reason:    "3",
 	})
 
-	res, err := m.GetStatus(context.Background(), nil)
+	var ctx context.Context
+	res, err := m.GetStatus(&ctx, mcp.Request{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	mRes, ok := res.(map[string]any)
-	if !ok {
-		t.Fatalf("expected map[string]any, got %T", res)
+	if res.IsError {
+		t.Fatalf("expected no error in result, got %s", res.Content)
+	}
+
+	text, err := mcp.GetText(res)
+	if err != nil {
+		t.Fatalf("failed to get text: %v", err)
+	}
+
+	var mRes map[string]any
+	if err := json.Unmarshal([]byte(text), &mRes); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
 	}
 
 	if mRes["is_enabled"] != false {
@@ -126,18 +158,27 @@ func TestGetAgentStatus_ReturnsLatestOnly(t *testing.T) {
 func TestToggleAgentStatus_Enable(t *testing.T) {
 	m := setupTestModule(t)
 
-	res, err := m.Toggle(context.Background(), map[string]any{
-		"is_enabled": true,
-		"changed_by": "u1",
-		"reason":     "test",
-	})
+	var ctx context.Context
+	req := mcp.Request{}
+	req.Params.Arguments = `{"is_enabled": true, "changed_by": "u1", "reason": "test"}`
+
+	res, err := m.Toggle(&ctx, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	mRes, ok := res.(map[string]any)
-	if !ok {
-		t.Fatalf("expected map[string]any, got %T", res)
+	if res.IsError {
+		t.Fatalf("expected no error in result, got %s", res.Content)
+	}
+
+	text, err := mcp.GetText(res)
+	if err != nil {
+		t.Fatalf("failed to get text: %v", err)
+	}
+
+	var mRes map[string]any
+	if err := json.Unmarshal([]byte(text), &mRes); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
 	}
 
 	if mRes["ok"] != true {
@@ -165,46 +206,55 @@ func TestToggleAgentStatus_Enable(t *testing.T) {
 func TestToggleAgentStatus_MissingIsEnabled(t *testing.T) {
 	m := setupTestModule(t)
 
-	_, err := m.Toggle(context.Background(), map[string]any{
-		"changed_by": "u1",
-	})
-	if err == nil {
-		t.Fatalf("expected error, got nil")
+	var ctx context.Context
+	req := mcp.Request{}
+	req.Params.Arguments = `{"changed_by": "u1"}`
+
+	res, err := m.Toggle(&ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "params invalid") && !strings.Contains(err.Error(), "invalid") {
-		t.Errorf("expected params invalid error, got %v", err)
+	if !res.IsError {
+		t.Fatalf("expected error result, got success")
+	}
+	if !strings.Contains(strings.ToLower(res.Content), "params invalid") && !strings.Contains(strings.ToLower(res.Content), "invalid") {
+		t.Errorf("expected params invalid error, got %v", res.Content)
 	}
 }
 
 func TestToggleAgentStatus_MissingChangedBy(t *testing.T) {
 	m := setupTestModule(t)
 
-	_, err := m.Toggle(context.Background(), map[string]any{
-		"is_enabled": true,
-	})
-	if err == nil {
-		t.Fatalf("expected error, got nil")
+	var ctx context.Context
+	req := mcp.Request{}
+	req.Params.Arguments = `{"is_enabled": true}`
+
+	res, err := m.Toggle(&ctx, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "params invalid") && !strings.Contains(err.Error(), "invalid") {
-		t.Errorf("expected params invalid error, got %v", err)
+	if !res.IsError {
+		t.Fatalf("expected error result, got success")
+	}
+	if !strings.Contains(strings.ToLower(res.Content), "params invalid") && !strings.Contains(strings.ToLower(res.Content), "invalid") {
+		t.Errorf("expected params invalid error, got %v", res.Content)
 	}
 }
 
 func TestToggleAgentStatus_AppendOnly(t *testing.T) {
 	m := setupTestModule(t)
 
-	_, err := m.Toggle(context.Background(), map[string]any{
-		"is_enabled": true,
-		"changed_by": "u1",
-	})
+	var ctx context.Context
+	req1 := mcp.Request{}
+	req1.Params.Arguments = `{"is_enabled": true, "changed_by": "u1"}`
+	_, err := m.Toggle(&ctx, req1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, err = m.Toggle(context.Background(), map[string]any{
-		"is_enabled": false,
-		"changed_by": "u2",
-	})
+	req2 := mcp.Request{}
+	req2.Params.Arguments = `{"is_enabled": false, "changed_by": "u2"}`
+	_, err = m.Toggle(&ctx, req2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

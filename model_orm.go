@@ -7,12 +7,12 @@ import (
 	"github.com/tinywasm/orm"
 )
 
-func (m *AgentSwitch) FormName() string {
+func (m *AgentSwitch) ModelName() string {
 	return "agent_switch"
 }
 
 var _schemaAgentSwitch = []fmt.Field{
-		{Name: "id", Type: fmt.FieldText, PK: true},
+		{Name: "id", Type: fmt.FieldText, DB: &fmt.FieldDB{PK: true}},
 		{Name: "is_enabled", Type: fmt.FieldBool, NotNull: true},
 		{Name: "changed_by", Type: fmt.FieldText, NotNull: true},
 		{Name: "reason", Type: fmt.FieldText},
@@ -29,14 +29,18 @@ func (m *AgentSwitch) Pointers() []any {
 	}
 }
 
+func (m *AgentSwitch) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
+}
+
 var AgentSwitch_ = struct {
-	TableName string
+	ModelName string
 	ID string
 	IsEnabled string
 	ChangedBy string
 	Reason string
 }{
-	TableName: "agent_switch",
+	ModelName: "agent_switch",
 	ID: "id",
 	IsEnabled: "is_enabled",
 	ChangedBy: "changed_by",
@@ -54,8 +58,8 @@ func ReadOneAgentSwitch(qb *orm.QB, model *AgentSwitch) (*AgentSwitch, error) {
 func ReadAllAgentSwitch(qb *orm.QB) ([]*AgentSwitch, error) {
 	var results []*AgentSwitch
 	err := qb.ReadAll(
-		func() orm.Model { return &AgentSwitch{} },
-		func(m orm.Model) { results = append(results, m.(*AgentSwitch)) },
+		func() fmt.Model { return &AgentSwitch{} },
+		func(m fmt.Model) { results = append(results, m.(*AgentSwitch)) },
 	)
 	return results, err
 }
