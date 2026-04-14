@@ -3,10 +3,11 @@
 package agentswitch
 
 import (
-	"encoding/json"
+	"strings"
 
 	"github.com/tinywasm/context"
 	"github.com/tinywasm/fmt"
+	"github.com/tinywasm/json"
 	"github.com/tinywasm/mcp"
 	"github.com/tinywasm/orm"
 	"github.com/tinywasm/unixid"
@@ -57,8 +58,9 @@ func (m *Module) GetStatus(ctx *context.Context, req mcp.Request) (*mcp.Result, 
 		return &mcp.Result{IsError: true, Content: fmt.Err("database", "unavailable").Error()}, nil
 	}
 	if len(rows) == 0 {
-		b, _ := json.Marshal(map[string]any{"is_enabled": false, "changed_at": int64(0)})
-		return mcp.Text(string(b)), nil
+		var out string
+		_ = json.Encode(&statusEmptyResult{}, &out)
+		return mcp.Text(out), nil
 	}
 	r := rows[0]
 
@@ -68,32 +70,30 @@ func (m *Module) GetStatus(ctx *context.Context, req mcp.Request) (*mcp.Result, 
 		return &mcp.Result{IsError: true, Content: err.Error()}, nil
 	}
 
-	b, _ := json.Marshal(map[string]any{
-		"is_enabled": r.IsEnabled,
-		"changed_by": r.ChangedBy,
-		"changed_at": ts,
-		"reason":     r.Reason,
-	})
-	return mcp.Text(string(b)), nil
+	var out string
+	_ = json.Encode(&statusResult{
+		IsEnabled: r.IsEnabled,
+		ChangedBy: r.ChangedBy,
+		ChangedAt: ts,
+		Reason:    r.Reason,
+	}, &out)
+	return mcp.Text(out), nil
 }
 
 // Toggle inserts a new audit row. Append-only — never updates existing rows.
 func (m *Module) Toggle(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
-	var args struct {
-		IsEnabled *bool  `json:"is_enabled"`
-		ChangedBy string `json:"changed_by"`
-		Reason    string `json:"reason"`
-	}
-	if err := json.Unmarshal([]byte(req.Params.Arguments), &args); err != nil || args.IsEnabled == nil {
+	if !strings.Contains(req.Params.Arguments, "is_enabled") {
 		return &mcp.Result{IsError: true, Content: fmt.Err("params", "invalid").Error()}, nil
 	}
-	if args.ChangedBy == "" {
+
+	var args toggleArgs
+	if err := json.Decode(req.Params.Arguments, &args); err != nil || args.ChangedBy == "" {
 		return &mcp.Result{IsError: true, Content: fmt.Err("params", "invalid").Error()}, nil
 	}
 
 	row := &AgentSwitch{
 		ID:        m.uid.GetNewID(),
-		IsEnabled: *args.IsEnabled,
+		IsEnabled: args.IsEnabled,
 		ChangedBy: args.ChangedBy,
 		Reason:    args.Reason,
 	}
@@ -101,6 +101,7 @@ func (m *Module) Toggle(ctx *context.Context, req mcp.Request) (*mcp.Result, err
 		return &mcp.Result{IsError: true, Content: fmt.Err("database", "unavailable").Error()}, nil
 	}
 
-	b, _ := json.Marshal(map[string]any{"ok": true, "is_enabled": *args.IsEnabled})
-	return mcp.Text(string(b)), nil
+	var out string
+	_ = json.Encode(&toggleResult{OK: true, IsEnabled: args.IsEnabled}, &out)
+	return mcp.Text(out), nil
 }
