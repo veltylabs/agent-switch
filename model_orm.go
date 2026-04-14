@@ -34,13 +34,11 @@ func (m *AgentSwitch) Validate(action byte) error {
 }
 
 var AgentSwitch_ = struct {
-	ModelName string
 	ID string
 	IsEnabled string
 	ChangedBy string
 	Reason string
 }{
-	ModelName: "agent_switch",
 	ID: "id",
 	IsEnabled: "is_enabled",
 	ChangedBy: "changed_by",
@@ -63,3 +61,4 @@ func ReadAllAgentSwitch(qb *orm.QB) ([]*AgentSwitch, error) {
 	)
 	return results, err
 }
+
