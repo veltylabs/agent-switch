@@ -175,11 +175,11 @@ Run `go mod tidy` after the edits to confirm the graph is clean.
 
 ## Checklist
 
-- [ ] Add four `// ormc:formonly` structs to `model.go`
-- [ ] Run `ormc` to regenerate `model_orm.go`
-- [ ] Remove `"encoding/json"` import from `mcp.go`
-- [ ] Add `"github.com/tinywasm/json"` import to `mcp.go`
-- [ ] Rewrite `GetStatus` — both branches use `json.Encode`
-- [ ] Rewrite `Toggle` — args use `json.Decode`, result uses `json.Encode`
-- [ ] Remove all `map[string]any` usage from `mcp.go`
-- [ ] Run `go build ./...` and `go test ./...` to verify
+- [x] Add four `// ormc:formonly` structs to `model.go`
+- [x] Run `ormc` to regenerate `model_orm.go`
+- [x] Remove `"encoding/json"` import from `mcp.go`
+- [x] Add `"github.com/tinywasm/json"` import to `mcp.go`
+- [x] Rewrite `GetStatus` — both branches use `json.Encode`
+- [x] Rewrite `Toggle` — args use `json.Decode`, result uses `json.Encode`
+- [x] Remove all `map[string]any` usage from `mcp.go`
+- [x] Run `go build ./...` and `go test ./...` to verify

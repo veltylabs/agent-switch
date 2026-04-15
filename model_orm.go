@@ -5,6 +5,7 @@ package agentswitch
 import (
 	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/orm"
+	"github.com/tinywasm/form/input"
 )
 
 func (m *AgentSwitch) ModelName() string {
@@ -62,3 +63,80 @@ func ReadAllAgentSwitch(qb *orm.QB) ([]*AgentSwitch, error) {
 	return results, err
 }
 
+var _schemastatusEmptyResult = []fmt.Field{
+		{Name: "is_enabled", Type: fmt.FieldBool, Widget: input.Checkbox()},
+		{Name: "changed_at", Type: fmt.FieldInt, Widget: input.Number()},
+	}
+
+func (m *statusEmptyResult) Schema() []fmt.Field { return _schemastatusEmptyResult }
+
+func (m *statusEmptyResult) Pointers() []any {
+	return []any{
+		&m.IsEnabled,
+		&m.ChangedAt,
+	}
+}
+
+func (m *statusEmptyResult) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
+}
+
+var _schemastatusResult = []fmt.Field{
+		{Name: "is_enabled", Type: fmt.FieldBool, Widget: input.Checkbox()},
+		{Name: "changed_by", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "changed_at", Type: fmt.FieldInt, Widget: input.Number()},
+		{Name: "reason", Type: fmt.FieldText, Widget: input.Text()},
+	}
+
+func (m *statusResult) Schema() []fmt.Field { return _schemastatusResult }
+
+func (m *statusResult) Pointers() []any {
+	return []any{
+		&m.IsEnabled,
+		&m.ChangedBy,
+		&m.ChangedAt,
+		&m.Reason,
+	}
+}
+
+func (m *statusResult) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
+}
+
+var _schematoggleArgs = []fmt.Field{
+		{Name: "is_enabled", Type: fmt.FieldBool, Widget: input.Checkbox()},
+		{Name: "changed_by", Type: fmt.FieldText, NotNull: true, Widget: input.Text()},
+		{Name: "reason", Type: fmt.FieldText, Widget: input.Text()},
+	}
+
+func (m *toggleArgs) Schema() []fmt.Field { return _schematoggleArgs }
+
+func (m *toggleArgs) Pointers() []any {
+	return []any{
+		&m.IsEnabled,
+		&m.ChangedBy,
+		&m.Reason,
+	}
+}
+
+func (m *toggleArgs) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
+}
+
+var _schematoggleResult = []fmt.Field{
+		{Name: "ok", Type: fmt.FieldBool, Widget: input.Checkbox()},
+		{Name: "is_enabled", Type: fmt.FieldBool, Widget: input.Checkbox()},
+	}
+
+func (m *toggleResult) Schema() []fmt.Field { return _schematoggleResult }
+
+func (m *toggleResult) Pointers() []any {
+	return []any{
+		&m.OK,
+		&m.IsEnabled,
+	}
+}
+
+func (m *toggleResult) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
+}
